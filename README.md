@@ -1,34 +1,54 @@
-# CIP Egypt Summer Time — AI Prompt Contest
+# CIP Egypt DST Fix
 
-Softxpert AI Expert Initiative wrap-up activity.
+### A verified DST-safe clock-in pipeline by Abdelrahman Ebied
 
-**Time box:** 30 minutes  
-**Goal:** Use AI efficiently to diagnose and fix this bug — best correct fix, clear explanation, lowest useful token spend.
+![Egypt DST fix — 195,351 Codex tokens, $0.59 estimated API cost, 24 of 24 checks passed](assets/egypt-dst-fix-token-usage.png)
 
----
+This contest submission fixes CIP's Egypt summer-time regression without
+hardcoding a year-round offset. Clock-ins remain UTC at rest and render through
+the date-specific `Africa/Cairo` IANA rules.
 
-## The issue (brief)
+| Proof | Result |
+|---|---:|
+| Regression checks | **24 / 24 passed** |
+| Cairo winter offset | **UTC+02:00** |
+| Cairo summer offset | **UTC+03:00** |
+| Storage invariant | **UTC/GMT at rest** |
+| AI tool | **OpenAI Codex** |
+| AI interaction turns | **5** |
+| Fix-publication token snapshot | **195,351** |
+| Estimated GPT-5 API-equivalent cost | **$0.59** |
 
-CIP is a legacy time-tracking portal. Users in **Egypt** report:
+## Before → after
 
-> During **summer time**, when I clock in at **9:00 AM**, CIP shows **8:00 AM**.  
-> Outside summer (regular / winter time) it looks correct.
+| Scenario | Before | After |
+|---|---:|---:|
+| Cairo summer clock-in | `09:00` | `09:00` |
+| CIP displayed | `08:00` ❌ | `09:00` ✅ |
+| Cairo winter clock-in | `09:00` | `09:00` |
+| CIP displayed | `09:00` | `09:00` ✅ |
 
-The person timezone is `Africa/Cairo`, but the UI still shows **`(GMT+02:00) Cairo`**.
+## Root cause
 
-This repo contains an **isolated** copy of the clock-in → GMT store → local display path (not the full CIP app).
+CIP reduced `Africa/Cairo` to a timezone-less wall string and later reparsed it
+through PHP's process-global timezone. A fixed `+02:00` default or stale tzdata
+therefore omitted Egypt's restored summer `+03:00` rule. The seeded
+`(GMT+02:00) Cairo` label and numeric offsets are metadata, not date-aware
+conversion rules.
 
----
+## The fix
 
-## What’s in this repo
+- Capture clock-ins as Unix timestamps, which identify unambiguous instants.
+- Format stored values explicitly as UTC/GMT.
+- Parse database values explicitly as UTC before rendering.
+- Render through the person's IANA zone instead of a label-derived offset.
+- Replace fixed-offset calendar arithmetic with instant-specific IANA
+  conversion.
 
-| File | Purpose |
-|------|---------|
-| `isolated-bug.php` | Buggy capture / store / display helpers (edit this) |
-| `reproduce.php` | Shows the 09:00 → 08:00 symptom |
-| `README.md` | This brief |
+Current OS/PHP tzdata remains a deployment prerequisite; application code
+should not duplicate Egypt's civil-time rules.
 
-### Run the reproduction
+## Verify it
 
 Requires PHP CLI:
 
@@ -36,39 +56,51 @@ Requires PHP CLI:
 php reproduce.php
 ```
 
-You should see the stale path capture/display **08:00** while the true Cairo summer wall clock for that instant is **09:00**.
+Expected:
+
+```text
+Timezone database: 2025.2
+Result: 24 passed, 0 failed
+```
+
+The harness covers winter, summer, both sides of both 2026 DST transitions, a
+fixed-`+02:00` process default, invalid inputs, UTC storage, local rendering,
+and the calendar path.
+
+## Repository
+
+| File | Purpose |
+|---|---|
+| [`isolated-bug.php`](isolated-bug.php) | DST-safe capture, UTC storage, and IANA rendering helpers |
+| [`reproduce.php`](reproduce.php) | Deterministic 24-check regression harness |
+| [`SUBMISSION.md`](SUBMISSION.md) | Root cause, fix rationale, AI log, and transparent cost assumptions |
+| [`assets/egypt-dst-fix-token-usage.png`](assets/egypt-dst-fix-token-usage.png) | Shareable fix-results infographic |
+
+## AI-assisted engineering
+
+One AI tool—OpenAI Codex—was used across five interaction turns. Codex goal
+telemetry recorded **195,351 tokens** immediately before fix publication,
+averaging approximately **39,070 combined tokens per turn** because the
+telemetry does not expose an input/output split.
+
+Using GPT-5 standard API rates of
+[$1.25/M input and $10/M output](https://developers.openai.com/api/docs/models/gpt-5),
+an 80% input / 20% output assumption gives an API-equivalent estimate of
+**$0.59**. The possible all-input to all-output range is **$0.24–$1.95**;
+actual Codex subscription billing may differ.
+
+See [`SUBMISSION.md`](SUBMISSION.md) for the full disclosure.
+
+## Constraint proof
+
+- ✅ No year-round `UTC+3` hardcode
+- ✅ No label-only `GMT+03:00` rename
+- ✅ No framework rewrite or added dependency
+- ✅ UTC/GMT storage preserved
+- ✅ Summer, winter, and transition boundaries tested
+- ✅ Invalid timestamps and timezone identifiers fail safely
 
 ---
 
-## What we need from you
-
-1. **Root cause** — 2–6 sentences in your own words (not paste-only from the model).
-2. **Minimal fix** — patch `isolated-bug.php` (and `reproduce.php` only if needed to prove the fix).
-3. **Naive fix you avoided** — name one bad approach and why it fails (e.g. hardcoding +3 forever).
-4. **AI log** — tool used, turns (max 5, aim ≤3), approximate tokens in+out per turn.
-
-### Constraints
-
-- Do **not** hardcode Egypt as `UTC+3` year-round (winter must stay correct).
-- Do **not** “fix” by only renaming the label to `(GMT+03:00)`.
-- Keep the change **minimal** — no full framework rewrite.
-- Prefer keeping **GMT-at-rest** storage if you can make capture/display DST-safe.
-- Egypt DST was restored in **2023+** (summer +3, winter +2). Legacy servers may still behave like fixed +2.
-
-### Scoring (priority order)
-
-1. Correct, production-safe fix  
-2. Clear human explanation  
-3. Token efficiency (lean prompts, fewer turns)
-
----
-
-## How to work
-
-1. Pull/clone this repo.
-2. Read this README and skim `isolated-bug.php` **before** opening AI (~2 minutes).
-3. Use **one** AI tool only.
-4. Prefer a tight first prompt: symptom + constraints + which files — not “fix timezone” with a huge dump.
-5. Freeze and submit at 30:00.
-
-Good luck.
+Original contest: Softxpert AI Expert Initiative — CIP Egypt Summer Time AI
+Prompt Contest.
