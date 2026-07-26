@@ -51,48 +51,88 @@ function cip_set_request_timezone($ianaCode)
 }
 
 // ---------------------------------------------------------------------------
-// Mirrors Timesheet::setClockInInfo — captures "now" as local wall string
+// Mirrors Timesheet::setClockInInfo — captures an instant, not a wall string
 // ---------------------------------------------------------------------------
 const TIMESHEET_SAVING_FORMAT = 'Y-m-d H:i';
+const CIP_GMT_STORAGE_FORMAT = 'Y-m-d H:i:s';
 
-function cip_capture_clock_in_local_string()
+function cip_capture_clock_in_instant($instant = null)
 {
-    return date(TIMESHEET_SAVING_FORMAT);
+    $utc = new DateTimeZone('UTC');
+
+    if ($instant === null) {
+        return new DateTimeImmutable('now', $utc);
+    }
+
+    if (!($instant instanceof DateTimeInterface)) {
+        return null;
+    }
+
+    return (new DateTimeImmutable('@' . $instant->getTimestamp()))
+        ->setTimezone($utc);
 }
 
 // ---------------------------------------------------------------------------
 // Mirrors clockPortalRecord::_set — stores timestamp/time columns as GMT
 // ---------------------------------------------------------------------------
-function cip_store_as_gmt($localWallString)
+function cip_store_as_gmt($instant)
 {
-    $time = strtotime($localWallString);
-    if (!$time) {
+    $utcInstant = cip_capture_clock_in_instant($instant);
+    if ($utcInstant === null) {
         return null;
     }
-    // "save the time with GMT timezone"
-    return gmdate('Y-m-d H:i:s', $time);
+
+    return $utcInstant->format(CIP_GMT_STORAGE_FORMAT);
 }
 
 // ---------------------------------------------------------------------------
 // Mirrors clockPortalRecord::convertTimeToCurrentTimezone
 // ---------------------------------------------------------------------------
-function cip_convert_gmt_string_to_current_timezone($gmtValueFromDb)
-{
-    $time = strtotime($gmtValueFromDb);
-    $value = date('Y-m-d H:i:s', $time);
-    $timezone = date_default_timezone_get();
-    $dateTimeObject = new DateTime($value, new DateTimeZone('GMT'));
-    $dateTimeObject->setTimezone(new DateTimeZone($timezone));
-    return $dateTimeObject;
+function cip_convert_gmt_string_to_current_timezone(
+    $gmtValueFromDb,
+    $ianaCode
+) {
+    if (!is_string($gmtValueFromDb) || !is_string($ianaCode)) {
+        return null;
+    }
+
+    try {
+        $utc = new DateTimeZone('UTC');
+        $targetTimezone = new DateTimeZone($ianaCode);
+    } catch (Exception $exception) {
+        return null;
+    }
+
+    $dateTimeObject = DateTimeImmutable::createFromFormat(
+        '!' . CIP_GMT_STORAGE_FORMAT,
+        $gmtValueFromDb,
+        $utc
+    );
+
+    if (
+        $dateTimeObject === false
+        || $dateTimeObject->format(CIP_GMT_STORAGE_FORMAT) !== $gmtValueFromDb
+    ) {
+        return null;
+    }
+
+    return $dateTimeObject->setTimezone($targetTimezone);
 }
 
 // ---------------------------------------------------------------------------
 // Mirrors Timesheet::getClockInView
 // ---------------------------------------------------------------------------
-function cip_get_clock_in_view($gmtValueFromDb, $format = TIMESHEET_SAVING_FORMAT)
-{
-    $dt = cip_convert_gmt_string_to_current_timezone($gmtValueFromDb);
-    return $dt->format($format);
+function cip_get_clock_in_view(
+    $gmtValueFromDb,
+    $ianaCode,
+    $format = TIMESHEET_SAVING_FORMAT
+) {
+    $dateTime = cip_convert_gmt_string_to_current_timezone(
+        $gmtValueFromDb,
+        $ianaCode
+    );
+
+    return $dateTime === null ? null : $dateTime->format($format);
 }
 
 // ---------------------------------------------------------------------------
