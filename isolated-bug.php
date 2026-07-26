@@ -136,13 +136,22 @@ function cip_get_clock_in_view(
 }
 
 // ---------------------------------------------------------------------------
-// Mirrors CIPCalendar.js calcTZDate — fixed numeric hour offset (JS port)
+// IANA-aware replacement for CIPCalendar.js fixed-offset arithmetic
 // ---------------------------------------------------------------------------
-function cip_calc_tz_date_from_offset($utcTimestamp, $offsetHours)
+function cip_calc_tz_date_from_zone($utcTimestamp, $ianaCode)
 {
-    // JS: utc = d.getTime() + (d.getTimezoneOffset()*60000)
-    //     nd  = new Date(utc + (3600000 * offset))
-    return $utcTimestamp + (int) round($offsetHours * 3600);
+    if (!is_int($utcTimestamp) || !is_string($ianaCode)) {
+        return null;
+    }
+
+    try {
+        $targetTimezone = new DateTimeZone($ianaCode);
+    } catch (Exception $exception) {
+        return null;
+    }
+
+    return (new DateTimeImmutable('@' . $utcTimestamp))
+        ->setTimezone($targetTimezone);
 }
 
 // ---------------------------------------------------------------------------
