@@ -35,10 +35,11 @@ IANA-aware calendar path. Result: **24 passed, 0 failed**.
 ## AI log and estimated cost
 
 - Tool: OpenAI Codex (one AI tool)
-- User turns through final publication authorization: **6**
+- AI interaction turns: **5** (steered messages received during one active
+  response count as one turn)
 - Token usage: **195,351 tokens**, Codex goal telemetry measured immediately
   before publication
-- Approximate combined tokens per user turn: **32,559** (the telemetry does not
+- Approximate combined tokens per turn: **39,070** (the telemetry does not
   expose an input/output or per-turn split)
 - Estimated GPT-5 API-equivalent cost: **$0.59**, assuming 80% input and 20%
   output tokens
