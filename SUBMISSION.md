@@ -1,6 +1,6 @@
 # Submission — Egypt Summer-Time Clock-In Fix
 
-Prepared by @softxpert.
+Prepared by Abdelrahman Ebied.
 
 ## Root cause
 
