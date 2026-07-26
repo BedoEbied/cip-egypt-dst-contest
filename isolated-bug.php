@@ -56,33 +56,19 @@ function cip_set_request_timezone($ianaCode)
 const TIMESHEET_SAVING_FORMAT = 'Y-m-d H:i';
 const CIP_GMT_STORAGE_FORMAT = 'Y-m-d H:i:s';
 
-function cip_capture_clock_in_instant($instant = null)
+function cip_capture_clock_in_timestamp($timestamp = null)
 {
-    $utc = new DateTimeZone('UTC');
-
-    if ($instant === null) {
-        return new DateTimeImmutable('now', $utc);
-    }
-
-    if (!($instant instanceof DateTimeInterface)) {
-        return null;
-    }
-
-    return (new DateTimeImmutable('@' . $instant->getTimestamp()))
-        ->setTimezone($utc);
+    return $timestamp === null ? time() : (is_int($timestamp) ? $timestamp : null);
 }
 
 // ---------------------------------------------------------------------------
 // Mirrors clockPortalRecord::_set — stores timestamp/time columns as GMT
 // ---------------------------------------------------------------------------
-function cip_store_as_gmt($instant)
+function cip_store_as_gmt($timestamp)
 {
-    $utcInstant = cip_capture_clock_in_instant($instant);
-    if ($utcInstant === null) {
-        return null;
-    }
-
-    return $utcInstant->format(CIP_GMT_STORAGE_FORMAT);
+    return is_int($timestamp)
+        ? gmdate(CIP_GMT_STORAGE_FORMAT, $timestamp)
+        : null;
 }
 
 // ---------------------------------------------------------------------------

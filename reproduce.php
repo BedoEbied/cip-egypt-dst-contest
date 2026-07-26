@@ -59,7 +59,7 @@ $cases = array(
 
 foreach ($cases as $label => $case) {
     $source = new DateTimeImmutable($case['utc'], $utc);
-    $instant = cip_capture_clock_in_instant($source);
+    $instant = cip_capture_clock_in_timestamp($source->getTimestamp());
     $stored = cip_store_as_gmt($instant);
     $view = cip_get_clock_in_view(
         $stored,
@@ -85,7 +85,7 @@ foreach ($cases as $label => $case) {
 cip_expect_same(
     'invalid capture input fails safely',
     null,
-    cip_capture_clock_in_instant('not-an-instant')
+    cip_capture_clock_in_timestamp('not-a-timestamp')
 );
 cip_expect_same('invalid storage input fails safely', null, cip_store_as_gmt('bad'));
 cip_expect_same(
